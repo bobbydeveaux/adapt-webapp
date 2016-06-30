@@ -1,0 +1,64 @@
+# language setting
+language: php
+
+# specifying runtime
+php:
+   '7.0'
+
+env:
+  global:
+    - secure: mTzVjvhPc9aG1T2R1kZ4b3ReTm9ddkB1vTbAc8ww7WE1x9LxEzRz4VsyWplMcwHPt8ksvvTtSNaE+cdrZrgPByYF92clqzUHpO04TN/je6lYsxRVtqQdDOSJskLvFRUwtBLcGEvXjcieRH0Yx8wVvIGv/w5Rv/OCN5udNJ3LgBbyUeCRYLNSy7IlpPzoLHDnqa+8u2ZZWGUwxRIEDzp/qog0f9my/snvZGt+WMKgL5E7tdQO11cbeKkHa6UagLTV858h/T+KJI2yiKNHP0HE6XKSLCpdasYlxVyfaXrGSwauQ/whxN//TKHYoH7jaIsZGqr8cYsS444rgVnqffrPWA==
+    - secure: ISoAnFUTr7hGT2+rnbGDJ39/BGZNMwQOJj18jvG+VL0omDW5xLqy2rngKKQQsSapxOoYefzHIHzbcFz/SwQfPU8ifT+Opa3yFuYGOLQESHrD/CsnDeQCNvRLBqW4lFlHzTkPIAeYeq6XkpHA74P0wfUck9RapMECZLeIhw6bKS0AwmY2UcxgNV36VWr9oJNkerPKhIgOo2SHdajcAx4riF1mTk9uh9ucCxggM9dyD5z4mumnNN/iZWU5jfBMIcCRvxmPGbHAvIEOxdaYijtZs2Fuc6ym9LKxE7+79wGlyqbVE7VionZz1wuylLofXRJEXA8QSYDOALcVQp6XRS2aTg==
+build:
+  # commands in this section run on your build machine and not inside your CI container.
+  pre_ci:
+    - docker build  --rm=true -t bobbydvo/webapp-release:tip .
+    - docker build  --rm=true -t bobbydvo/webapp-release:$BRANCH.$BUILD_NUMBER .
+    - docker images
+
+  pre_ci_boot:
+    image_name: bobbydvo/webapp-release
+    image_tag: tip
+    pull: false
+    options: "-e HOME=/root"
+
+  # commands in this section run inside your CI container. In addition, any commands such as ls, in this section can be used to skip default processing for CI.
+  ci:
+    # Installing PIP as it's normally on the defauly baseboz from Shippable, but this is a custom build.
+    - yum -y install python-pip
+    - mkdir -p ~/.aws
+    - echo '[profile eb-cli]' > ~/.aws/config
+    - echo "aws_access_key_id = $AWSAccessKeyId" >> ~/.aws/config
+    - echo "aws_secret_access_key = $AWSSecretAccessKey" >> ~/.aws/config
+
+    # Here you'd place anything you want to test. For PHP apps, maybe Phpunit?
+    - echo 'No tests.'
+
+  # Everything all good? Let's push this to docker.
+  post_ci:
+    #- docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD -e $DOCKER_EMAIL
+    - docker push bobbydvo/webapp-release:tip
+    - docker push bobbydvo/webapp-release:$BRANCH.$BUILD_NUMBER
+
+integrations:
+  ## Our Docker Hub Integration in Shippable
+  hub:
+    - integrationName: "DockerHub"
+      type: docker
+      #agent_only: true
+      branches:
+        only:
+          - master
+  deploy:
+    - integrationName: "BobbyAWS"
+      type: aws
+      target: adapt-webapp
+      platform: "64bit Amazon Linux 2016.03 v2.1.0 running Docker 1.9.1"
+      application_name: "Test Application"
+      env_name: testenv
+      region: eu-west-1
+      image_name: "bobbydvo/webapp-release"
+      image_tag: "$BRANCH.$BUILD_NUMBER"
+      branches:
+        only:
+          - master

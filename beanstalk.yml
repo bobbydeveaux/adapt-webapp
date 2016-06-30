@@ -1,0 +1,10 @@
+branch-defaults:
+  master:
+    environment: testenv
+global:
+  application_name: Test Application
+  default_ec2_keyname: demo
+  default_platform: 64bit Amazon Linux 2016.03 v2.1.0 running Docker 1.9.1
+  default_region: eu-west-1
+  profile: eb-cli
+  sc: git
